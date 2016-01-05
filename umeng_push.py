@@ -5,8 +5,8 @@ import time
 import requests
 
 UMENGPUSH_URL = 'http://msg.umeng.com/api/send'
-my_app_key = '566a7ca5e0f55ae4bf000548'
-my_app_master_secret = '1p0b42kav5c9dhyklbki3fpcywicoksm'
+my_app_key = 'myappkey'
+my_app_master_secret = 'myappmastersecret'
 
 class UmengPush():
 	app_key = ""
