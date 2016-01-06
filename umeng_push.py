@@ -5,7 +5,13 @@ import time
 import requests
 
 UMENGPUSH_URL = 'http://msg.umeng.com/api/send'
+
 my_app_key = 'myappkey'
+
+my_app_key_ios = 'myappkeyios'
+
+my_app_master_secret_ios = 'myappmastersecretios'
+
 my_app_master_secret = 'myappmastersecret'
 
 class UmengPush():
@@ -153,13 +159,24 @@ class UmengPushMessage():
 		NOTIFY = 'notification'
 		MESSAGE = 'message'
 
+	class CHANNEL():
+		ios = 'ios'
+		android = 'android'
+
 	display_type = ""
+	channel = ""
+	alert = ""
+	sound = ""
+	badge = ""
+	content_available = ""
+	category = ""
 	body = UMMessageBody()
 
 	is_set_title = False
 
-	def __init__(self, type):
+	def __init__(self, type, channel):
 		self.display_type = type
+		self.channel = channel
 
 	def setMessageCustom(self, text):
 		self.body.custom = text
@@ -170,7 +187,7 @@ class UmengPushMessage():
 			self.body.ticker = ticker
 			self.is_set_title = True
 		else:
-			raise Exception("setNotifyTitle params must is not empty")
+			raise Exception("setNotifyTitle params must be not empty")
 	def setNotifySound(self, **kwargs):
 		for each in kwargs:
 			if each in self.body.soundParams():
@@ -179,30 +196,70 @@ class UmengPushMessage():
 	def setNotifyAfterOpen(self, type, params):
 		self.body.setOpenAction(type, params)
 
+	def setAps(self, alert, badge="", sound="", content_available="", category=""):
+		if not alert:
+			raise Exception("alert must be not empty")
+		self.alert = alert
+		if badge:
+			self.badge = badge
+		if sound:
+			self.sound = sound
+		if content_available:
+			self.content_available = content_available
+		if category:
+			self.category = category
+
 
 	def setExtra(self, **kwargs):
 		self.extra = kwargs
 
 	def getParams(self):
-		message = {'display_type': self.display_type, 'body': {}}
-		if self.display_type == self.TYPE.NOTIFY:
-			if not self.is_set_title:
-				raise Exception("setNotifyTitle params must is not empty")
-			message['body'] = self.body.getParams()
-		elif self.display_type == self.TYPE.MESSAGE:
-			message['body'] = {'custom': self.body.custom}
-		message['extra'] = self.extra
-		return message
+		if self.channel == self.CHANNEL.android:
+			message = {'display_type': self.display_type, 'body': {}}
+			if self.display_type == self.TYPE.NOTIFY:
+				if not self.is_set_title:
+					raise Exception("setNotifyTitle params must is not empty")
+				message['body'] = self.body.getParams()
+			elif self.display_type == self.TYPE.MESSAGE:
+				message['body'] = {'custom': self.body.custom}
+			message['extra'] = self.extra
+			return message
+		elif self.channel == self.CHANNEL.ios:
+			message = {}
+			message['aps'] = {
+				'alert': self.alert,
+			}
+			if self.sound:
+				message['aps']['sound'] = self.sound
+			if self.badge:
+				message['aps']['badge'] = self.badge
+			if self.category:
+				message['aps']['category'] = self.category
+			if self.content_available:
+				message['aps']['content-available'] = self.content_available
+
+			message.update(self.extra)
+			return message
+		else:
+			raise Exception("not choice channel")
 
 
-def test():
-	upm = UmengPushMessage(type=UmengPushMessage.TYPE.NOTIFY)
+def testandroid():
+	upm = UmengPushMessage(type=UmengPushMessage.TYPE.NOTIFY, channel=UmengPushMessage.CHANNEL.android)
 	upm.setNotifyTitle(title='testtitle', text='testtext', ticker='testticker')
 	upm.setNotifyAfterOpen(UMMessageBody.OPEN_ACTION.GO_APP,params='')
 	upm.setExtra(id='1',type='2')
 	up = UmengPush(app_key=my_app_key, app_master_secret=my_app_master_secret)
+	up.setMode(test=True)
 	return up.sendMessage(upm, ['fdsafdsafds','fdsafdsafds'])
 
+def testios():
+	upm = UmengPushMessage(type=UmengPushMessage.TYPE.NOTIFY, channel=UmengPushMessage.CHANNEL.ios)
+	upm.setAps(alert='test')
+	upm.setExtra(id='1',type='2')
+	up = UmengPush(app_key=my_app_key_ios, app_master_secret=my_app_master_secret_ios)
+	up.setMode(test=True)
+	return up.sendMessage(upm, ['fdsafdsafds','fdsafdsafds'])
 
 if __name__ == '__main__':
-	print(test())
+	print(testios())
